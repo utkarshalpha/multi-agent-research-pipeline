@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Research Pipeline Console</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Multi-Agent Research Pipeline</p>
+        <h1>Research Pipeline Console</h1>
+      </div>
+      <nav class="topnav" aria-label="Project links">
+        <a href="/docs">API Docs</a>
+        <a href="/health">Health</a>
+      </nav>
+    </header>
+
+    <main class="app-shell">
+      <section class="workspace" aria-labelledby="query-heading">
+        <div class="query-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Live Request</p>
+              <h2 id="query-heading">Research Query</h2>
+            </div>
+            <div class="status-pill" id="service-status">Checking service</div>
+          </div>
+
+          <form id="research-form" class="query-form">
+            <label for="query">Question</label>
+            <textarea
+              id="query"
+              name="query"
+              rows="4"
+              minlength="3"
+              required
+            >What are the key differences between RAG and fine-tuning for LLM applications?</textarea>
+            <div class="actions">
+              <button type="submit" id="run-button" title="Run the multi-agent pipeline">Run Research</button>
+              <button type="button" id="sample-button" class="secondary" title="Load the saved portfolio sample">Load Sample</button>
+            </div>
+          </form>
+        </div>
+
+        <section class="pipeline-panel" aria-labelledby="pipeline-heading">
+          <div class="panel-heading compact">
+            <div>
+              <p class="eyebrow">Execution</p>
+              <h2 id="pipeline-heading">Agent Flow</h2>
+            </div>
+            <span id="run-id" class="run-id">sample</span>
+          </div>
+
+          <div class="agent-flow" aria-label="Planner to writer pipeline">
+            <div class="stage" data-stage="planner">
+              <strong>Planner</strong>
+              <span>Sub-questions</span>
+            </div>
+            <div class="stage" data-stage="researcher">
+              <strong>Researcher</strong>
+              <span>Web + arXiv</span>
+            </div>
+            <div class="stage" data-stage="critic">
+              <strong>Critic</strong>
+              <span>Quality gate</span>
+            </div>
+            <div class="stage" data-stage="writer">
+              <strong>Writer</strong>
+              <span>Cited report</span>
+            </div>
+          </div>
+
+          <div id="metrics" class="metrics-grid" aria-live="polite"></div>
+        </section>
+      </section>
+
+      <section class="results" aria-label="Research result">
+        <article class="report-panel">
+          <div class="panel-heading compact">
+            <div>
+              <p class="eyebrow">Output</p>
+              <h2>Report</h2>
+            </div>
+            <span id="result-state" class="status-pill muted">sample loaded</span>
+          </div>
+          <div id="report-output" class="report-output"></div>
+        </article>
+
+        <aside class="citations-panel" aria-label="Citations">
+          <div class="panel-heading compact">
+            <div>
+              <p class="eyebrow">Evidence</p>
+              <h2>Citations</h2>
+            </div>
+          </div>
+          <ol id="citations-list" class="citations-list"></ol>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

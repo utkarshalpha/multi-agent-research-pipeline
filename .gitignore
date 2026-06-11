@@ -1,0 +1,10 @@
+.env
+.venv/
+.codex_venv/
+__pycache__/
+*.py[cod]
+server.log
+server.out.log
+server.err.log
+qdrant_local/
+evals/results.json

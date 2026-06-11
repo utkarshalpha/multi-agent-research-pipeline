@@ -1,0 +1,22 @@
+{
+  "run_id": "demo-portfolio-sample",
+  "report": "# RAG vs Fine-Tuning for LLM Applications\n\n## Executive Summary\nRetrieval-augmented generation, or RAG, is best when an application needs current, source-backed answers from changing knowledge. Fine-tuning is best when the model needs to learn a repeatable behavior, tone, classification pattern, or domain-specific output format. In many production systems, the strongest design uses both: RAG supplies evidence at request time, while fine-tuning improves how the model uses that evidence [1][2].\n\n## When RAG Fits\nRAG connects a model to external documents, search results, or vector indexes during inference. This keeps knowledge easier to update because teams can refresh the retrieval corpus without retraining the model. It also improves auditability because answers can cite retrieved sources [1].\n\n## When Fine-Tuning Fits\nFine-tuning changes model behavior by training on examples. It is useful when the same skill is needed repeatedly, such as formatting structured reports, matching a brand voice, extracting fields, or following domain-specific decision rules. It is less convenient for fast-changing facts because updates require a new training cycle [2].\n\n## Practical Trade-Offs\nRAG often has lower iteration cost and stronger freshness, but it depends on retrieval quality, chunking, ranking, and prompt design. Fine-tuning can reduce prompt length and improve consistency, but it needs curated training data and evaluation. Teams should start with RAG for knowledge grounding, then fine-tune only after they know which behavior needs to become more reliable [1][3].\n\n## Recommendation\nUse RAG when the key risk is outdated or uncited information. Use fine-tuning when the key risk is inconsistent behavior. For a portfolio-grade research assistant, RAG plus a critic loop is the right first architecture because the product value depends on evidence quality, citation coverage, and retry behavior [3].",
+  "citations": [
+    "https://www.anthropic.com/news/contextual-retrieval",
+    "https://platform.openai.com/docs/guides/fine-tuning",
+    "https://arxiv.org/abs/2005.11401"
+  ],
+  "metadata": {
+    "model": "claude-sonnet-4-6",
+    "latency_seconds": 18.4,
+    "retry_count": 1,
+    "num_sub_questions": 4,
+    "num_sources": 9,
+    "num_citations": 3,
+    "token_usage": {
+      "input_tokens": 41200,
+      "output_tokens": 3100,
+      "total_tokens": 44300
+    }
+  }
+}

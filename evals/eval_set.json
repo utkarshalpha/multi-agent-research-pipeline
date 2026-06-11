@@ -1,0 +1,28 @@
+{
+  "description": "20 evaluation questions spanning 4 domains (5 each).",
+  "questions": [
+    {"id": "sci-1", "category": "science", "query": "What are the latest breakthroughs in mRNA vaccine technology?"},
+    {"id": "sci-2", "category": "science", "query": "How does CRISPR-Cas9 gene editing achieve target specificity, and what are the main off-target risks?"},
+    {"id": "sci-3", "category": "science", "query": "What is the current scientific consensus on the timeline and feasibility of nuclear fusion power?"},
+    {"id": "sci-4", "category": "science", "query": "What recent advances have improved the stability and efficiency of perovskite solar cells?"},
+    {"id": "sci-5", "category": "science", "query": "What does recent research say about the gut microbiome's influence on neurological health?"},
+
+    {"id": "fin-1", "category": "finance", "query": "How has the Fed's interest-rate policy impacted startup valuations in 2024?"},
+    {"id": "fin-2", "category": "finance", "query": "What are the key drivers behind recent volatility in the US Treasury bond market?"},
+    {"id": "fin-3", "category": "finance", "query": "How are central bank digital currencies (CBDCs) expected to affect commercial banking?"},
+    {"id": "fin-4", "category": "finance", "query": "What factors are driving institutional adoption of Bitcoin ETFs and what are the risks?"},
+    {"id": "fin-5", "category": "finance", "query": "How is private credit reshaping corporate lending markets and what systemic risks does it pose?"},
+
+    {"id": "tech-1", "category": "technology", "query": "What are the key differences between RAG and fine-tuning for adapting LLMs to a domain?"},
+    {"id": "tech-2", "category": "technology", "query": "What architectural innovations enable mixture-of-experts models to scale efficiently?"},
+    {"id": "tech-3", "category": "technology", "query": "How do modern vector databases implement approximate nearest-neighbor search at scale?"},
+    {"id": "tech-4", "category": "technology", "query": "What are the leading approaches to reducing hallucination in large language models?"},
+    {"id": "tech-5", "category": "technology", "query": "What are the current trade-offs between WebAssembly and containers for edge computing?"},
+
+    {"id": "pol-1", "category": "policy", "query": "What are the main provisions of the EU AI Act and who do they apply to?"},
+    {"id": "pol-2", "category": "policy", "query": "How do recent US executive actions on AI safety compare to the EU's regulatory approach?"},
+    {"id": "pol-3", "category": "policy", "query": "What policy mechanisms are being proposed to regulate carbon border adjustments?"},
+    {"id": "pol-4", "category": "policy", "query": "What are the key debates around data-privacy regulation following GDPR enforcement trends?"},
+    {"id": "pol-5", "category": "policy", "query": "How are governments approaching the regulation of stablecoins and crypto exchanges?"}
+  ]
+}
