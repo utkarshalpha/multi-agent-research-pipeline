@@ -199,13 +199,16 @@ The test suite under `tests/` is fully offline (every module forces
 scoring, Writer rendering, mock determinism contracts, demo routes, and
 end-to-end `POST /research` runs including auth, rate limiting, and the
 force-retry loop. `.github/workflows/ci.yml` runs the same suite on every push
-and pull request to `main` with no secrets.
+and pull request to `main` with no secrets. On pushes to `main` it then builds
+the Docker image, smoke-tests the running container keyless in mock mode
+(health check plus a real `POST /research`), and publishes it to
+`ghcr.io/utkarshalpha/multi-agent-research-pipeline`.
 
 ## Status
 
 Honestly stated: every component above is implemented and verified **in mock
-mode** by the offline suite. The pipeline has not yet been validated against
-the live Anthropic/Tavily/arXiv APIs (keys required), and the Docker image has
-not yet been built on a Docker host. The next high-value steps are a live
-validation run (with real eval results), a short recorded demo of the console
-at `/`, and a hosted deployment.
+mode** by the offline suite, and the Docker image is built, smoke-tested, and
+published to GHCR by CI. The pipeline has not yet been validated against the
+live Anthropic/Tavily/arXiv APIs (keys required). The next high-value steps
+are a live validation run (with real eval results), a short recorded demo of
+the console at `/`, and a hosted deployment.

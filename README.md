@@ -1,5 +1,7 @@
 # Multi-Agent Research Pipeline
 
+[![CI](https://github.com/utkarshalpha/multi-agent-research-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/utkarshalpha/multi-agent-research-pipeline/actions/workflows/ci.yml)
+
 An AI research assistant backend that turns one research question into a
 structured, cited Markdown report. It uses FastAPI for the API, LangGraph for
 agent orchestration, Anthropic Claude for reasoning, Tavily and arXiv for
@@ -185,8 +187,20 @@ and `PIPELINE_API_KEY` with empty-safe defaults, so the stack boots keyless in
 mock mode. The image runs as an unprivileged user and ships a `/health`-based
 healthcheck.
 
-> Note: the image definition is desk-checked but has not yet been built on a
-> Docker host (the dev machine has no Docker) — see Portfolio Status below.
+### Prebuilt image (GHCR)
+
+CI builds the image on every push to `main`, smoke-tests it keyless (boots the
+container in mock mode and runs a real `POST /research` against it), and
+publishes it to GitHub Container Registry. To run it anywhere with Docker — no
+clone, no keys:
+
+```bash
+docker run -p 8000:8000 -e MOCK_MODE=true -e QDRANT_PATH=':memory:' \
+  ghcr.io/utkarshalpha/multi-agent-research-pipeline:latest
+```
+
+Then open `http://localhost:8000/`. Pass real `ANTHROPIC_API_KEY` /
+`TAVILY_API_KEY` env vars instead of `MOCK_MODE` for live research.
 
 ## API Usage
 
@@ -289,7 +303,10 @@ also works because the modules set those variables themselves.)
 ### CI
 
 `.github/workflows/ci.yml` runs this exact suite on every push and pull
-request to `main` (Ubuntu, Python 3.12) — no secrets required.
+request to `main` (Ubuntu, Python 3.12) — no secrets required. On pushes to
+`main`, a second job then builds the Docker image, smoke-tests the running
+container in mock mode (health check plus a real `POST /research`), and
+publishes it to `ghcr.io/utkarshalpha/multi-agent-research-pipeline`.
 
 ## Evals
 
@@ -324,12 +341,13 @@ An honest snapshot of where the project stands.
 cited report writing), the hardened API surface (optional key auth, rate
 limiting, timeouts, sanitized errors), the demo console, the eval harness with
 quality/groundedness scoring, and the Docker/CI assets all exist and are
-exercised by the offline test suite (61 tests, green) on every push.
+exercised by the offline test suite (61 tests, green) on every push. The
+Docker image is built, smoke-tested (a real `POST /research` against the
+running container), and published to GHCR by CI on every push to `main`.
 
 **Not yet validated live.** No end-to-end run has been made against the real
 Anthropic, Tavily, or arXiv APIs — that requires keys. Latency, cost, and
 report-quality numbers shown in this README are illustrative, not measured.
-The Docker image has likewise not yet been built on a Docker host.
 
 **Remaining work:**
 
