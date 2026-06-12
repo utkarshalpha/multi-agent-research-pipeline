@@ -2,7 +2,8 @@
 
 The ``arxiv`` library is synchronous and does blocking network I/O, so we run it
 in a thread via ``asyncio.to_thread`` to preserve the async interface the
-Researcher expects.
+Researcher expects. In ``MOCK_MODE`` deterministic canned papers are returned
+instead — no network call at all.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from typing import Any
 
 from loguru import logger
 
-from config import ARXIV_MAX_RESULTS
+from config import ARXIV_MAX_RESULTS, MOCK_MODE
 
 try:
     import arxiv
@@ -57,6 +58,13 @@ async def arxiv_search(query: str, max_results: int = ARXIV_MAX_RESULTS) -> list
         A list of dicts with keys ``title``, ``summary``, ``pdf_url`` and
         ``published_date``. Returns an empty list on failure.
     """
+    if MOCK_MODE:
+        from tools.mocks import mock_arxiv_results  # local import: mock-only dep
+
+        results = mock_arxiv_results(query)[:max_results]
+        logger.debug("MOCK_MODE: returning {} canned arXiv results for {!r}", len(results), query)
+        return results
+
     try:
         results = await asyncio.to_thread(_search_sync, query, max_results)
     except Exception as exc:  # noqa: BLE001 - degrade gracefully on any API error

@@ -1,3 +1,13 @@
+"""Smoke tests for the demo-facing routes (console, sample response, health)."""
+
+import os
+
+# config.py reads the environment at import time — these must be set before any
+# project module is imported (load_dotenv() never overrides existing vars), so
+# this module stays offline even when run standalone.
+os.environ["MOCK_MODE"] = "true"
+os.environ["QDRANT_PATH"] = ":memory:"
+
 import unittest
 
 from fastapi.testclient import TestClient

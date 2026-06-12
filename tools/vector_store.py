@@ -1,8 +1,10 @@
 """Qdrant vector-store helpers used as a semantic cache for research results.
 
 Embeddings are produced locally with fastembed (no external API key required).
-All public functions degrade gracefully: if Qdrant is unreachable the pipeline
-simply treats every lookup as a cache miss instead of crashing.
+In ``MOCK_MODE`` embeddings are deterministic hash-derived vectors instead, so
+no fastembed model is loaded or downloaded. All public functions degrade
+gracefully: if Qdrant is unreachable the pipeline simply treats every lookup as
+a cache miss instead of crashing.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from loguru import logger
 from config import (
     CACHE_SIMILARITY_THRESHOLD,
     EMBEDDING_MODEL,
+    MOCK_MODE,
     QDRANT_COLLECTION,
     QDRANT_PATH,
     QDRANT_URL,
@@ -56,7 +59,10 @@ def _get_client() -> "AsyncQdrantClient":
     if AsyncQdrantClient is None:
         raise RuntimeError("qdrant-client is not installed. Run: pip install qdrant-client")
     if _client is None:
-        if QDRANT_PATH:
+        if QDRANT_PATH.strip().lower() in (":memory:", "memory"):
+            logger.info("Using in-memory Qdrant (no server)")
+            _client = AsyncQdrantClient(location=":memory:")
+        elif QDRANT_PATH:
             logger.info("Using embedded Qdrant (no server) at path={}", QDRANT_PATH)
             _client = AsyncQdrantClient(path=QDRANT_PATH)
         elif QDRANT_URL.strip().lower() in (":memory:", "memory"):
@@ -77,12 +83,19 @@ def _embed_sync(text: str) -> list[float]:
 async def embed_text(text: str) -> list[float]:
     """Embed a string into a dense vector, off the event loop.
 
+    In ``MOCK_MODE`` a deterministic hash-derived 384-dim unit vector is
+    returned instead — no fastembed import, model load, or download happens.
+
     Args:
         text: The text to embed.
 
     Returns:
         A ``VECTOR_SIZE``-dimensional embedding as a list of floats.
     """
+    if MOCK_MODE:
+        from tools.mocks import mock_embedding  # local import: mock-only dep
+
+        return mock_embedding(text)
     return await asyncio.to_thread(_embed_sync, text)
 
 
@@ -163,11 +176,17 @@ async def upsert(result: ResearchResult, embedding: Optional[list[float]] = None
         if embedding is None:
             embedding = await embed_text(result.question)
         client = _get_client()
+        # Deterministic point id derived from question+url: re-researching the
+        # same source overwrites the cached point instead of minting a fresh
+        # uuid4 per upsert (which duplicated points forever on re-research).
+        point_id = str(
+            uuid.uuid5(uuid.NAMESPACE_URL, f"{result.question}|{result.source_url}")
+        )
         await client.upsert(
             collection_name=QDRANT_COLLECTION,
             points=[
                 models.PointStruct(
-                    id=str(uuid.uuid4()),
+                    id=point_id,
                     vector=embedding,
                     payload=result.model_dump(),
                 )

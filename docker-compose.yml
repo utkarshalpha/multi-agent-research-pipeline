@@ -19,6 +19,30 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: research_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - qdrant
+    environment:
+      # In-cluster service endpoints. QDRANT_PATH= (empty) forces remote mode.
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_PATH: ""
+      REDIS_URL: redis://redis:6379
+      # Passed through from the host; the defaults keep the stack bootable
+      # without any keys — set MOCK_MODE=true for a fully offline run.
+      MOCK_MODE: ${MOCK_MODE:-false}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      PIPELINE_API_KEY: ${PIPELINE_API_KEY:-}
+    restart: unless-stopped
+
 volumes:
   qdrant_storage:
   redis_data:

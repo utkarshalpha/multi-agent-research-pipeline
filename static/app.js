@@ -10,6 +10,9 @@ const metricsGrid = document.querySelector("#metrics");
 const runId = document.querySelector("#run-id");
 const stages = Array.from(document.querySelectorAll(".stage"));
 
+// Client-side guard so a stalled /research request never leaves the console stuck.
+const RESEARCH_TIMEOUT_MS = 10 * 60 * 1000;
+
 const metricLabels = {
   model: "Model",
   latency_seconds: "Latency",
@@ -29,14 +32,42 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+// Turns [n] markers in ALREADY-ESCAPED text into anchor pills that jump to the
+// matching entry in the citations panel (renderCitations assigns the ids).
+function renderCiteTokens(escapedText) {
+  return escapedText.replace(
+    /\[(\d+)\]/g,
+    '<a class="cite-token" href="#citation-$1" title="Jump to citation $1">[$1]</a>'
+  );
+}
+
+// Escapes the text, then linkifies bare http(s) URLs and renders [n] citation
+// pills. URL detection runs on escaped text so the href can never break out of
+// its attribute, and the scheme is restricted to http(s).
 function renderInline(text) {
-  return escapeHtml(text).replace(/\[(\d+)\]/g, '<span class="cite-token">[$1]</span>');
+  const escaped = escapeHtml(text);
+  const urlPattern = /\bhttps?:\/\/\S+/g;
+  let html = "";
+  let cursor = 0;
+  for (const match of escaped.matchAll(urlPattern)) {
+    // Keep sentence punctuation out of the link target.
+    const trailing = (match[0].match(/[.,)]+$/) || [""])[0];
+    const url = match[0].slice(0, match[0].length - trailing.length);
+    html += renderCiteTokens(escaped.slice(cursor, match.index));
+    html += `<a href="${url}" target="_blank" rel="noreferrer">${url}</a>${trailing}`;
+    cursor = match.index + match[0].length;
+  }
+  html += renderCiteTokens(escaped.slice(cursor));
+  return html;
 }
 
 function renderMarkdown(markdown) {
   const lines = String(markdown || "").split(/\r?\n/);
   const blocks = [];
   let paragraph = [];
+  let listTag = null; // "ol" | "ul" while a list is open
+  let listStart = 1;
+  let listItems = [];
 
   function flushParagraph() {
     if (!paragraph.length) return;
@@ -44,25 +75,61 @@ function renderMarkdown(markdown) {
     paragraph = [];
   }
 
+  function flushList() {
+    if (!listItems.length) return;
+    const startAttr = listTag === "ol" && listStart !== 1 ? ` start="${listStart}"` : "";
+    blocks.push(`<${listTag}${startAttr}>${listItems.join("")}</${listTag}>`);
+    listItems = [];
+    listTag = null;
+    listStart = 1;
+  }
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
       flushParagraph();
+      flushList();
       continue;
     }
-    if (trimmed.startsWith("# ")) {
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.*)$/);
+    if (heading) {
       flushParagraph();
-      blocks.push(`<h1>${renderInline(trimmed.slice(2))}</h1>`);
+      flushList();
+      const level = heading[1].length;
+      blocks.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
       continue;
     }
-    if (trimmed.startsWith("## ")) {
+
+    const ordered = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
+    if (ordered) {
       flushParagraph();
-      blocks.push(`<h2>${renderInline(trimmed.slice(3))}</h2>`);
+      if (listTag !== "ol") {
+        flushList();
+        listTag = "ol";
+        listStart = Number(ordered[1]) || 1;
+      }
+      listItems.push(`<li>${renderInline(ordered[2])}</li>`);
       continue;
     }
+
+    const unordered = trimmed.match(/^[-*+]\s+(.*)$/);
+    if (unordered) {
+      flushParagraph();
+      if (listTag !== "ul") {
+        flushList();
+        listTag = "ul";
+      }
+      listItems.push(`<li>${renderInline(unordered[1])}</li>`);
+      continue;
+    }
+
+    // A plain line ends any open list before joining the running paragraph.
+    flushList();
     paragraph.push(trimmed);
   }
   flushParagraph();
+  flushList();
 
   return blocks.join("");
 }
@@ -77,6 +144,12 @@ function setStageState(state) {
       stage.classList.add("done");
     }
   });
+}
+
+function setResultState(text, variant) {
+  resultState.textContent = text;
+  resultState.classList.remove("error", "muted", "success", "running");
+  if (variant) resultState.classList.add(variant);
 }
 
 function formatMetricValue(key, value) {
@@ -112,33 +185,39 @@ function renderMetrics(metadata = {}) {
 
 function renderCitations(citations = []) {
   if (!citations.length) {
-    citationsList.innerHTML = '<li>No citations returned.</li>';
+    citationsList.innerHTML = "<li>No citations returned.</li>";
     return;
   }
   citationsList.innerHTML = citations
-    .map((url) => {
+    .map((url, index) => {
       const safeUrl = escapeHtml(url);
-      return `<li><a href="${safeUrl}" target="_blank" rel="noreferrer">${safeUrl}</a></li>`;
+      // Citation URLs are LLM output synthesised from scraped web content, so
+      // only linkify http(s) schemes (mirroring renderInline); anything else
+      // (e.g. javascript:) renders as inert text instead of a clickable link.
+      const body = /^https?:\/\//i.test(String(url).trim())
+        ? `<a href="${safeUrl}" target="_blank" rel="noreferrer">${safeUrl}</a>`
+        : safeUrl;
+      return `<li id="citation-${index + 1}">${body}</li>`;
     })
     .join("");
 }
 
-function renderResponse(payload, stateText) {
+function renderResponse(payload, stateText, variant = "muted") {
   reportOutput.innerHTML = renderMarkdown(payload.report);
   renderCitations(payload.citations);
   renderMetrics(payload.metadata);
   runId.textContent = payload.run_id || "run";
-  resultState.textContent = stateText;
-  resultState.classList.remove("error", "muted");
-  resultState.classList.add("muted");
+  setResultState(stateText, variant);
   setStageState("done");
 }
 
 function setBusy(isBusy) {
   runButton.disabled = isBusy;
   sampleButton.disabled = isBusy;
-  resultState.textContent = isBusy ? "running" : resultState.textContent;
-  if (isBusy) setStageState("running");
+  if (isBusy) {
+    setResultState("running", "running");
+    setStageState("running");
+  }
 }
 
 async function refreshHealth() {
@@ -160,7 +239,7 @@ async function loadSample() {
     const response = await fetch("/sample-response");
     if (!response.ok) throw new Error(`Sample failed with HTTP ${response.status}`);
     const payload = await response.json();
-    renderResponse(payload, "sample loaded");
+    renderResponse(payload, "sample loaded", "muted");
   } catch (error) {
     showError(error);
   } finally {
@@ -174,30 +253,50 @@ async function runResearch(event) {
   if (query.length < 3) return;
 
   setBusy(true);
-  resultState.classList.remove("error", "muted");
-  resultState.textContent = "running";
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), RESEARCH_TIMEOUT_MS);
 
   try {
     const response = await fetch("/research", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query }),
+      signal: controller.signal
     });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.detail || `Research failed with HTTP ${response.status}`);
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (parseError) {
+      payload = null; // Non-JSON body (e.g. a gateway error page).
     }
-    renderResponse(payload, "complete");
+    if (!response.ok) {
+      const detail = typeof payload?.detail === "string" ? payload.detail : "";
+      throw new Error(detail || `Research failed with HTTP ${response.status}`);
+    }
+    if (!payload) {
+      throw new Error("The server returned an unreadable response.");
+    }
+    renderResponse(payload, "complete", "success");
   } catch (error) {
-    showError(error);
+    if (error.name === "AbortError") {
+      showError(
+        new Error(
+          "The request timed out after 10 minutes. The pipeline may still be " +
+            "running server-side — please retry, or use Load Sample to view a saved run."
+        )
+      );
+    } else {
+      showError(error);
+    }
   } finally {
+    clearTimeout(timeoutId);
     setBusy(false);
   }
 }
 
 function showError(error) {
-  resultState.textContent = "error";
-  resultState.classList.add("error");
+  setResultState("error", "error");
   reportOutput.innerHTML = `<div class="empty-state">${escapeHtml(error.message || error)}</div>`;
   citationsList.innerHTML = "";
   setStageState("");

@@ -7,7 +7,7 @@ single-file edit.
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -63,10 +63,15 @@ class CritiqueResult(BaseModel):
         description="Indices into the research-results list whose score < threshold.",
     )
     overall_pass: bool = Field(
-        False, description="True only if every result scores >= the pass threshold."
+        False,
+        description="True only if at least one result exists, every result "
+        "scores >= the pass threshold, and every sub-question has evidence. "
+        "An empty result set fails so total search failure triggers a retry.",
     )
     feedback: str = Field(
-        "", description="Natural-language guidance for the Researcher on a retry."
+        "",
+        description="Natural-language guidance consumed by the Researcher on "
+        "a retry to reformulate the search queries for the weak sub-questions.",
     )
 
 
@@ -97,3 +102,21 @@ class FinalReport(BaseModel):
         default_factory=list,
         description="De-duplicated list of every source URL cited, in [n] order.",
     )
+
+
+# --------------------------------------------------------------------------- #
+# HTTP API contracts (FastAPI layer)
+# --------------------------------------------------------------------------- #
+class ResearchRequest(BaseModel):
+    """Body for ``POST /research``."""
+
+    query: str = Field(..., min_length=3, description="The research question.")
+
+
+class ResearchResponse(BaseModel):
+    """Response for ``POST /research`` — the main portfolio-facing contract."""
+
+    run_id: str
+    report: str
+    citations: list[str]
+    metadata: dict[str, Any]

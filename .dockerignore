@@ -1,0 +1,23 @@
+# Virtual environments
+.codex_venv
+.venv
+
+# Embedded Qdrant storage (local dev only)
+qdrant_local
+
+# Python bytecode (root and nested)
+__pycache__
+**/__pycache__
+*.pyc
+**/*.pyc
+
+# Logs and secrets
+server.log
+.env
+
+# Version control
+.git
+
+# Derived / heavy artifacts not needed at runtime
+evals/results.json
+docs/assets

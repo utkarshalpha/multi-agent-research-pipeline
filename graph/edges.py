@@ -11,9 +11,12 @@ from graph.state import AgentState
 def should_retry(state: AgentState) -> str:
     """Decide whether to loop back to the Researcher or proceed to the Writer.
 
-    The loop is self-healing: if the Critic failed any result and we still have
-    retries left, we send control back to the Researcher to re-gather evidence
-    for the weak sub-questions. Otherwise we hand off to the Writer.
+    Pure function of state: retry iff the critique failed AND retry budget
+    remains. The Critic fails the critique when any result scores below the
+    threshold, when any sub-question has zero results, or when nothing was
+    retrieved at all — so total search failure also loops back here until the
+    budget is exhausted, after which the Writer produces its (possibly stub)
+    report.
 
     Args:
         state: Current graph state; reads ``critique`` and ``retry_count``.

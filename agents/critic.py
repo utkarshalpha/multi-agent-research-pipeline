@@ -8,7 +8,10 @@ Each result is scored on three dimensions:
 * **Recency** — computed deterministically from the publication date.
 
 The three are combined into a single confidence per result. ``overall_pass`` is
-True only when *every* result clears the pass threshold.
+True only when *every* result clears the pass threshold AND every sub-question
+has at least one result. An empty result set always fails the critique so that
+total search failure triggers the retry loop; the budget gate lives in
+``graph.edges.should_retry``, which routes to the writer once retries run out.
 """
 
 from __future__ import annotations
@@ -127,15 +130,22 @@ async def critic_node(state: AgentState) -> dict:
         ``confidence`` overwritten with the final combined score.
     """
     results: list[ResearchResult] = state.get("research_results", [])
+    unanswered: list[str] = state.get("unanswered_questions", [])
     run_id = state.get("run_id", "")
 
     if not results:
-        logger.warning("[critic] no research results to score — passing through to writer")
+        # Total search failure must FAIL so the loop retries with reformulated
+        # queries; should_retry hands off to the writer once the budget is spent.
+        logger.warning("[critic] no research results at all — failing critique to trigger a retry")
         critique = CritiqueResult(
             scores=[],
             low_confidence_indices=[],
-            overall_pass=True,  # all([]) is vacuously True; avoids a pointless retry loop
-            feedback="No evidence was retrieved for the query.",
+            overall_pass=False,
+            feedback=(
+                "No evidence was retrieved for any sub-question. Reformulate "
+                "each search with more specific terminology, synonyms, or "
+                "broader phrasing so at least one usable source is found."
+            ),
         )
         await redis_store.save(run_id, "critique", critique.model_dump())
         return {"critique": critique}
@@ -175,7 +185,14 @@ async def critic_node(state: AgentState) -> dict:
             i, relevance, credibility, recency, combined,
         )
 
-    overall_pass = len(low_confidence_indices) == 0
+    # Zero-coverage sub-questions also fail the critique so they re-enter the
+    # researcher's retry set instead of being silently dropped.
+    overall_pass = not low_confidence_indices and not unanswered
+    if unanswered:
+        feedback = (
+            f"{feedback} Additionally, {len(unanswered)} sub-question(s) "
+            f"returned no results and need fresh evidence: {'; '.join(unanswered)}"
+        ).strip()
     critique = CritiqueResult(
         scores=scores,
         low_confidence_indices=low_confidence_indices,
@@ -183,8 +200,8 @@ async def critic_node(state: AgentState) -> dict:
         feedback=feedback,
     )
     logger.info(
-        "[critic] overall_pass={} | {}/{} results below threshold",
-        overall_pass, len(low_confidence_indices), len(results),
+        "[critic] overall_pass={} | {}/{} results below threshold | {} unanswered sub-question(s)",
+        overall_pass, len(low_confidence_indices), len(results), len(unanswered),
     )
 
     await redis_store.save(run_id, "critique", critique.model_dump())

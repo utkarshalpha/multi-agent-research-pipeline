@@ -18,6 +18,16 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -146,6 +156,18 @@ h2 {
   border-color: var(--line);
   color: var(--muted);
   background: #f8fafc;
+}
+
+.status-pill.success {
+  border-color: #9fd4ba;
+  color: var(--green);
+  background: #e7f7ee;
+}
+
+.status-pill.running {
+  border-color: #ecd2ab;
+  color: var(--amber);
+  background: #fff6e8;
 }
 
 .status-pill.error {
@@ -315,9 +337,32 @@ button:disabled {
   font-size: 18px;
 }
 
+.report-output h3 {
+  margin: 18px 0 6px;
+  font-size: 16px;
+}
+
 .report-output p {
   margin: 0 0 12px;
   color: #263544;
+}
+
+.report-output ol,
+.report-output ul {
+  margin: 0 0 12px;
+  padding-left: 24px;
+  color: #263544;
+}
+
+.report-output li {
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.report-output a:not(.cite-token) {
+  color: var(--blue-dark);
+  font-weight: 650;
+  overflow-wrap: anywhere;
 }
 
 .cite-token {
@@ -330,6 +375,17 @@ button:disabled {
   background: #e8f1fa;
   font-size: 12px;
   font-weight: 850;
+  text-decoration: none;
+}
+
+.cite-token + .cite-token {
+  margin-left: 3px;
+}
+
+a.cite-token:hover,
+a.cite-token:focus-visible {
+  background: #d4e6f7;
+  outline: 2px solid rgba(35, 103, 166, 0.35);
 }
 
 .citations-list {
@@ -343,6 +399,13 @@ button:disabled {
   padding: 10px 10px 10px 4px;
   border-bottom: 1px solid var(--line);
   overflow-wrap: anywhere;
+  scroll-margin-top: 24px;
+}
+
+.citations-list li:target {
+  border-radius: 6px;
+  background: #eef5fc;
+  outline: 2px solid rgba(35, 103, 166, 0.35);
 }
 
 .citations-list a {

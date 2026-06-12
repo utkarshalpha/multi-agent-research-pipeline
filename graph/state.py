@@ -23,3 +23,8 @@ class AgentState(TypedDict, total=False):
     final_report: str
     retry_count: int
     run_id: str
+    # Sub-questions whose searches returned zero results (owned by the
+    # Researcher). They join the retry set, and if they still have nothing
+    # once retries are exhausted they are surfaced here instead of being
+    # silently dropped.
+    unanswered_questions: list[str]
