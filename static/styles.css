@@ -66,6 +66,14 @@ h2 {
   letter-spacing: 0;
 }
 
+.tagline {
+  margin: 8px 0 0;
+  max-width: 640px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 h1 {
   font-size: 28px;
   line-height: 1.2;

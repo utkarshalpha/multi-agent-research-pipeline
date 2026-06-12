@@ -13,10 +13,16 @@ const stages = Array.from(document.querySelectorAll(".stage"));
 // Client-side guard so a stalled /research request never leaves the console stuck.
 const RESEARCH_TIMEOUT_MS = 10 * 60 * 1000;
 
+// The GitHub Pages build injects window.STATIC_DEMO = true and ships the
+// sample payload as a flat file next to the page. When the FastAPI app serves
+// this console the flag is absent and every path below behaves as before.
+const STATIC_DEMO = window.STATIC_DEMO === true;
+const SAMPLE_URL = STATIC_DEMO ? "sample-response.json" : "/sample-response";
+
 const metricLabels = {
-  model: "Model",
+  model: "LLM Backend",
   latency_seconds: "Latency",
-  retry_count: "Retries",
+  retry_count: "Critic Retries",
   num_sub_questions: "Sub-questions",
   num_sources: "Sources",
   num_citations: "Citations",
@@ -158,6 +164,14 @@ function formatMetricValue(key, value) {
   if (key === "total_tokens" && Number.isFinite(Number(value))) {
     return Number(value).toLocaleString();
   }
+  // The pipeline is the project; the LLM is a swappable backend. Mock and
+  // sample runs say so plainly instead of leading with a model name.
+  if (key === "model") {
+    const text = String(value);
+    if (text.startsWith("mock")) return "offline mock — no API";
+    if (text.startsWith("sample")) return "saved sample — no API";
+    return text;
+  }
   return String(value);
 }
 
@@ -166,14 +180,15 @@ function renderMetrics(metadata = {}) {
     ...metadata,
     total_tokens: metadata.token_usage?.total_tokens
   };
+  // Pipeline metrics lead; the LLM backend is listed last on purpose.
   const keys = [
-    "model",
-    "latency_seconds",
-    "retry_count",
     "num_sub_questions",
     "num_sources",
     "num_citations",
-    "total_tokens"
+    "retry_count",
+    "latency_seconds",
+    "total_tokens",
+    "model"
   ];
   metricsGrid.innerHTML = keys
     .map((key) => {
@@ -221,11 +236,19 @@ function setBusy(isBusy) {
 }
 
 async function refreshHealth() {
+  if (STATIC_DEMO) {
+    serviceStatus.textContent = "Static demo — sample data";
+    serviceStatus.classList.remove("error");
+    serviceStatus.classList.add("muted");
+    return;
+  }
   try {
     const response = await fetch("/health");
     if (!response.ok) throw new Error("Health check failed");
     const health = await response.json();
-    serviceStatus.textContent = `Online: ${health.model}`;
+    serviceStatus.textContent = String(health.model).startsWith("mock")
+      ? "Online — mock mode, no API keys"
+      : `Online: ${health.model}`;
     serviceStatus.classList.remove("error", "muted");
   } catch (error) {
     serviceStatus.textContent = "Service offline";
@@ -236,7 +259,7 @@ async function refreshHealth() {
 async function loadSample() {
   setBusy(true);
   try {
-    const response = await fetch("/sample-response");
+    const response = await fetch(SAMPLE_URL);
     if (!response.ok) throw new Error(`Sample failed with HTTP ${response.status}`);
     const payload = await response.json();
     renderResponse(payload, "sample loaded", "muted");
@@ -249,6 +272,17 @@ async function loadSample() {
 
 async function runResearch(event) {
   event.preventDefault();
+  if (STATIC_DEMO) {
+    setStageState("");
+    setResultState("static demo", "muted");
+    citationsList.innerHTML = "";
+    reportOutput.innerHTML =
+      '<div class="empty-state">Live runs need the backend — this page is the static portfolio demo. ' +
+      "Run it anywhere with Docker:<br><code>docker run -p 8000:8000 -e MOCK_MODE=true " +
+      "ghcr.io/utkarshalpha/multi-agent-research-pipeline:latest</code><br>" +
+      "then open http://localhost:8000/. Use Load Sample here to view a saved run.</div>";
+    return;
+  }
   const query = queryInput.value.trim();
   if (query.length < 3) return;
 

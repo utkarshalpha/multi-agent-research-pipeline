@@ -7,7 +7,7 @@
     "https://arxiv.org/abs/2005.11401"
   ],
   "metadata": {
-    "model": "claude-sonnet-4-6",
+    "model": "sample (no live call)",
     "latency_seconds": 18.4,
     "retry_count": 1,
     "num_sub_questions": 4,
